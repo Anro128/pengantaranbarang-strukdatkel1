@@ -13,9 +13,6 @@ struct Pengemudi{
     bool status;
 };
 
-vector <Barang> barang;
-vector <Pengemudi> pengemudi;
-
 struct Pesanan{
     int id;
     int idBarang;
@@ -26,17 +23,38 @@ struct Pesanan{
     string tujuan;
 };
 
+struct Notifikasi{
+    string isi;
+};
+
+
+void saveBarang(vector<Barang> v){
+    std::ofstream outFile("Barang.txt");
+    for (const auto &e : v) outFile << e.id <<" | "<<e.nama <<" | "<<e.stok << "\n";
+}
+
+void savePengemudi(vector<Pengemudi> v){
+    std::ofstream outFile("Pengemudi.txt");
+    for (const auto &e : v) outFile << e.id <<" | "<<e.nama <<" | "<<e.status << "\n";
+}
+
 bool cmp(const Pesanan& a, const Pesanan& b) {
     return a.id < b.id;
 }
 
+vector <Barang> barang;
+vector <Pengemudi> pengemudi;
+
 class Notif{
     private:
-        stack<string> notif;
+        stack<Notifikasi> notif;
     public:
         Notif(){}
-        Notif(string s){
-            notif.push(s);
+
+        void addNotif(string s){
+            Notifikasi newnotif;
+            newnotif.isi=s;
+            notif.push(newnotif);
         }
 
         void lihatNotif(){
@@ -44,7 +62,7 @@ class Notif{
             queue<string> tmpnotif;
             cout<<"NOTIFIKASI"<<endl;
             while(x>0 && !notif.empty()){
-                string tmp=notif.top();
+                string tmp=notif.top().isi;
                 cout<<tmp<<endl;
                 notif.pop();
                 tmpnotif.push(tmp);
@@ -52,7 +70,9 @@ class Notif{
             }
             
             while(!tmpnotif.empty()){
-                notif.push(tmpnotif.front());
+                Notifikasi newnotif;
+                newnotif.isi=tmpnotif.front();
+                notif.push(newnotif);
                 tmpnotif.pop();
             }
             return;
@@ -62,6 +82,7 @@ class Notif{
 class Pengantaran{
     private:
         deque<Pesanan> pesanan;
+        Notif notif;
         int idPesanan = 0;
     public:
         void lihatDaftarBarang(){
@@ -108,6 +129,9 @@ class Pengantaran{
             }
 
             Pesanan tmp={idPesanan, idBarang, -1, jum, "Diverifikasi", "gudang", tujuan};
+            string ntf="Pesanan "+to_string(idPesanan)+" berhasil ditambahkan";
+            notif.addNotif(ntf);
+            cout<<ntf<<endl;
             pesanan.push_back(tmp);
             return;
         }
@@ -140,7 +164,9 @@ class Pengantaran{
             pesanan[idx].idPengemudi=idP;
             pengemudi[idP].status=1;
 
-            cout<<"Pesanan berhasil diverifikasi"<<endl;
+            string ntf="Pesanan berhasil diverifikasi";
+            notif.addNotif(ntf);
+            cout<<ntf<<endl;
             return;
         }
 
@@ -156,11 +182,16 @@ class Pengantaran{
                 pesanan[idx].status = "Sampai";
                 pesanan[idx].lokTerakhir = pesanan[idx].tujuan;
                 pengemudi[pesanan[idx].idPengemudi].status=0;
+                string ntf="Pesanan "+to_string(pesanan[idx].id)+" Sampai di Tujuan akhir"+pesanan[idx].tujuan;
+                notif.addNotif(ntf);
             }else{
                 string lokTerakhir;
                 cin>>lokTerakhir;
                 pesanan[idx].lokTerakhir = lokTerakhir;
+                string ntf="Pesanan "+to_string(pesanan[idx].id)+" Sampai di "+pesanan[idx].lokTerakhir;
+                notif.addNotif(ntf);
             }
+            cout<<"Berhasil diupdate"<<endl;
             return;
         }
 
@@ -169,7 +200,7 @@ class Pengantaran{
             Pesanan P=pesanan[idx];
 
             if(P.status == "Diverifikasi")
-                cout<<"Pesanan sedang diverifikasi oleh admin";
+                cout<<"Pesanan sedang diverifikasi oleh admin"<<endl;
             else if(P.status == "Dikirim") 
                 printf("Pesanan sudah sampai di %s, diantarkan oleh %s\n", P.lokTerakhir, pengemudi[P.idPengemudi].nama);
             else if(P.status == "Sampai")
@@ -181,8 +212,15 @@ class Pengantaran{
 };
 
 bool cek_admin(string pw){
-    if(pw == "b") return 1;
-    return 0;
+    int enc[9]={1210, 1287, 1397, 1331, 1287, 1320, 1320, 1199, 1276};
+    bool ret=1;
+    for(int i=0;i<9;i++){
+        int x=pw[i];
+        x+=12;
+        x*=11;
+        if(x!=enc[i]) ret=0;
+    }
+    return ret;
 }
 
 int main(){
@@ -192,8 +230,16 @@ int main(){
     int iniadmin=0;
     cin>>iniadmin;
     string pw;
-    if(iniadmin == 1) cin>>pw;
-
+    if(iniadmin == 1) {
+        cout<<"Masukan Password: ";
+        cin>>pw;
+        bool isadmin=cek_admin(pw);
+        if(isadmin){
+            cout<<"Password benar! Welcome admin!!!"<<endl;
+        }else{
+            cout<<"Password salah!, anda login sebagai user"<<endl;
+        }
+    }
     while(1){
         cout <<"Haii... Kamu mau apa?"<< endl;
         cout <<"1. Antar Barang"<<endl;
@@ -204,25 +250,29 @@ int main(){
             cout <<"111. Tambahkan barang"<<endl;
             cout <<"112. Update data pengiriman"<<endl;
             cout <<"113. Verifikasi pengiriman dan kelola pengemudi"<<endl;
+            cout <<"114. Tambahkan pengemudi"<<endl;
         }
 
         int p;
         cin>>p;
-        if(cek_admin(pw)){
-            if(p == 111){
-                int id=barang.size();
-                string nama;
-                int stok;
-                cout<<"Nama barang: "; cin>>nama;
-                cout<<"Stok: "; cin>>stok;
-                barang.push_back({id,nama,stok});
-            }else if(p == 112){
-                int id;
-                cout<<"ID pengantaran: "; cin>>id;
-                pengantaran.update(id);
-            }else if(p == 113){
-                pengantaran.verif();
-            }
+        if(p == 111 && cek_admin(pw)){
+            int id=barang.size();
+            string nama;
+            int stok;
+            cout<<"Nama barang: "; cin>>nama;
+            cout<<"Stok: "; cin>>stok;
+            barang.push_back({id,nama,stok});
+        }else if(p == 112  && cek_admin(pw)){
+            int id;
+            cout<<"ID pengantaran: "; cin>>id;
+            pengantaran.update(id);
+        }else if(p == 113 && cek_admin(pw)){
+            pengantaran.verif();
+        }else if(p == 114 && cek_admin(pw)){
+            int id=pengemudi.size();
+            string nama;
+            cout<<"Nama Pengemudi: "; cin>>nama;
+            barang.push_back({id,nama,0});
         }else if(p == 1){
             pengantaran.buat();
         }else if(p==2){
@@ -232,6 +282,7 @@ int main(){
         }else if(p==3){
             notif.lihatNotif();
         }else{
+            saveBarang(barang);
             break;
         }
     }
