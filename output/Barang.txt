@@ -1,4 +1,4 @@
-0|Buku|24
+0|Buku|-75
 1|pulpen|123
 2|tws|9
 3|bakso|9
