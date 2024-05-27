@@ -1,2 +1,3 @@
 0|Budi|0
 1|joko|0
+2|Wahyu|0
